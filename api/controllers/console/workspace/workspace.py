@@ -241,3 +241,27 @@ api.add_resource(SwitchWorkspaceApi, "/workspaces/switch")  # POST for switching
 api.add_resource(CustomConfigWorkspaceApi, "/workspaces/custom-config")
 api.add_resource(WebappLogoWorkspaceApi, "/workspaces/custom-config/webapp-logo/upload")
 api.add_resource(WorkspaceInfoApi, "/workspaces/info")  # POST for changing workspace info
+
+
+class AdminCreateWorkspaceApi(Resource):
+    @login_required
+    @admin_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("name", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        tenant = TenantService.create_workspace_by_admin(name=args["name"], creator_account=current_user)
+        return {"data": marshal(tenant, workspace_fields)}, 201
+
+
+class AdminDeleteWorkspaceApi(Resource):
+    @login_required
+    @admin_required
+    def delete(self, workspace_id: str):  # workspace_id is uuid but received as str
+        TenantService.delete_workspace_by_admin(workspace_id=str(workspace_id), operator_account=current_user)
+        return {"result": "success"}, 200
+
+
+api.add_resource(AdminCreateWorkspaceApi, "/admin/workspaces", endpoint="admin_create_workspace")
+api.add_resource(AdminDeleteWorkspaceApi, "/admin/workspaces/<uuid:workspace_id>", endpoint="admin_delete_workspace")

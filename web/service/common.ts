@@ -351,3 +351,11 @@ export const submitDeleteAccountFeedback = (body: { feedback: string; email: str
 
 export const getDocDownloadUrl = (doc_name: string) =>
   get<{ url: string }>('/compliance/download', { params: { doc_name } }, { silent: true })
+
+export const createWorkspace = (name: string) => {
+  return post('/admin/workspaces', { body: { name } }) as Promise<CommonResponse & { data: IWorkspace }>
+}
+
+export const deleteWorkspace = (workspaceId: string) => {
+  return del(`/admin/workspaces/${workspaceId}`) as Promise<CommonResponse>
+}

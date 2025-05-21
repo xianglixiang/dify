@@ -48,6 +48,8 @@ from services.errors.account import (
     NoPermissionError,
     RoleAlreadyAssignedError,
     TenantNotFoundError,
+    NoPermissionError,
+    InvalidActionError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
@@ -858,6 +860,41 @@ class TenantService:
         tenant = db.get_or_404(Tenant, tenant_id)
 
         return cast(dict, tenant.custom_config_dict)
+
+    @classmethod
+    def create_workspace_by_admin(cls, name: str, creator_account: Account) -> Tenant:
+        """Create workspace by admin"""
+        if not creator_account.current_tenant:
+            raise NoPermissionError("Admin user must have an active workspace to create new workspaces.")
+
+        if not creator_account.is_admin_or_owner:
+            raise NoPermissionError("Only admins or owners can create new workspaces.")
+
+        # Create the new tenant
+        # is_from_dashboard=True bypasses some restrictions that might not apply to admins
+        new_tenant = cls.create_tenant(name=name, is_from_dashboard=True)
+
+        return new_tenant
+
+    @classmethod
+    def delete_workspace_by_admin(cls, workspace_id: str, operator_account: Account) -> None:
+        """Delete workspace by admin"""
+        if not operator_account.current_tenant:
+            raise NoPermissionError("Admin user must have an active workspace to delete workspaces.")
+
+        if not operator_account.is_admin_or_owner:
+            raise NoPermissionError("Only admins or owners can delete workspaces.")
+
+        target_tenant = db.session.query(Tenant).filter(Tenant.id == workspace_id).first()
+
+        if not target_tenant:
+            raise TenantNotFoundError("Target workspace not found.")
+
+        if target_tenant.id == operator_account.current_tenant_id:
+            raise InvalidActionError("Cannot delete the workspace you are currently in.")
+
+        target_tenant.status = TenantStatus.ARCHIVE.value
+        db.session.commit()
 
 
 class RegisterService:
