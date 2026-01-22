@@ -11,6 +11,7 @@ from . import __version__
 from .client.base import DifyClient
 from .client.exceptions import DifyClientError
 from .config.loader import ConfigLoader
+from .services.model_service import ModelService
 from .services.plugin_service import PluginService
 from .services.tenant_service import TenantService
 from .utils.progress import TaskProgressTracker
@@ -369,6 +370,307 @@ def list(api_url, api_key, page, page_size):
 
     except DifyClientError as e:
         console.print(f"[red]✗[/red] Failed to list plugins: {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Unexpected error: {e}")
+        sys.exit(1)
+
+
+# Model commands
+@cli.group()
+def model():
+    """Model provider and model management."""
+    pass
+
+
+@model.command("add-provider")
+@click.option("--api-url", envvar="DIFY_API_URL", required=True, help="Dify API URL")
+@click.option("--api-key", envvar="DIFY_API_KEY", required=True, help="Dify API key")
+@click.argument("provider")
+@click.option("--credentials", "-c", multiple=True, help="Credentials as key=value pairs")
+def add_provider(api_url, api_key, provider, credentials):
+    """Add or update a model provider with credentials.
+
+    Example:
+        dify-ops model add-provider openai -c openai_api_key=sk-xxx
+        dify-ops model add-provider anthropic -c anthropic_api_key=sk-ant-xxx
+    """
+    try:
+        # Parse credentials
+        creds_dict = {}
+        for cred in credentials:
+            if "=" not in cred:
+                console.print(f"[red]✗[/red] Invalid credential format: {cred}")
+                console.print("  Use format: key=value")
+                sys.exit(1)
+            key, value = cred.split("=", 1)
+            creds_dict[key] = value
+
+        if not creds_dict:
+            console.print("[red]✗[/red] No credentials provided")
+            console.print("  Use -c key=value to provide credentials")
+            sys.exit(1)
+
+        with DifyClient(api_url, api_key) as client:
+            service = ModelService(client)
+
+            console.print(f"[blue]Adding provider:[/blue] {provider}")
+            result = service.set_provider_credentials(provider, creds_dict)
+
+            console.print(f"[green]✓[/green] Provider added successfully")
+            console.print(f"  Provider: {provider}")
+            console.print(f"  Credentials: {', '.join(creds_dict.keys())}")
+
+    except DifyClientError as e:
+        console.print(f"[red]✗[/red] Failed to add provider: {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Unexpected error: {e}")
+        sys.exit(1)
+
+
+@model.command("enable")
+@click.option("--api-url", envvar="DIFY_API_URL", required=True, help="Dify API URL")
+@click.option("--api-key", envvar="DIFY_API_KEY", required=True, help="Dify API key")
+@click.argument("provider")
+@click.argument("model_name")
+@click.option(
+    "--model-type",
+    type=click.Choice(["llm", "text-embedding", "rerank", "speech2text", "tts"]),
+    default="llm",
+    help="Model type",
+)
+def enable_model(api_url, api_key, provider, model_name, model_type):
+    """Enable a model for a provider.
+
+    Example:
+        dify-ops model enable openai gpt-4o --model-type llm
+        dify-ops model enable openai text-embedding-3-large --model-type text-embedding
+    """
+    try:
+        with DifyClient(api_url, api_key) as client:
+            service = ModelService(client)
+
+            # Import ModelConfig to create config object
+            from .config.schema import ModelConfig
+
+            model_config = ModelConfig(
+                model=model_name,
+                model_type=model_type,
+                enabled=True,
+            )
+
+            console.print(f"[blue]Enabling model:[/blue] {provider}/{model_name} ({model_type})")
+            service.enable_model(provider, model_config)
+
+            console.print(f"[green]✓[/green] Model enabled successfully")
+            console.print(f"  Provider: {provider}")
+            console.print(f"  Model: {model_name}")
+            console.print(f"  Type: {model_type}")
+
+    except DifyClientError as e:
+        console.print(f"[red]✗[/red] Failed to enable model: {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Unexpected error: {e}")
+        sys.exit(1)
+
+
+@model.command("disable")
+@click.option("--api-url", envvar="DIFY_API_URL", required=True, help="Dify API URL")
+@click.option("--api-key", envvar="DIFY_API_KEY", required=True, help="Dify API key")
+@click.argument("provider")
+@click.argument("model_name")
+@click.option(
+    "--model-type",
+    type=click.Choice(["llm", "text-embedding", "rerank", "speech2text", "tts"]),
+    default="llm",
+    help="Model type",
+)
+def disable_model(api_url, api_key, provider, model_name, model_type):
+    """Disable a model for a provider.
+
+    Example:
+        dify-ops model disable openai gpt-3.5-turbo
+    """
+    try:
+        with DifyClient(api_url, api_key) as client:
+            service = ModelService(client)
+
+            console.print(f"[blue]Disabling model:[/blue] {provider}/{model_name} ({model_type})")
+            service.disable_model(provider, model_name, model_type)
+
+            console.print(f"[green]✓[/green] Model disabled successfully")
+            console.print(f"  Provider: {provider}")
+            console.print(f"  Model: {model_name}")
+            console.print(f"  Type: {model_type}")
+
+    except DifyClientError as e:
+        console.print(f"[red]✗[/red] Failed to disable model: {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Unexpected error: {e}")
+        sys.exit(1)
+
+
+@model.command("set-default")
+@click.option("--api-url", envvar="DIFY_API_URL", required=True, help="Dify API URL")
+@click.option("--api-key", envvar="DIFY_API_KEY", required=True, help="Dify API key")
+@click.argument("provider")
+@click.argument("model_name")
+@click.option(
+    "--model-type",
+    type=click.Choice(["llm", "text-embedding", "rerank", "speech2text", "tts"]),
+    default="llm",
+    help="Model type",
+)
+def set_default_model(api_url, api_key, provider, model_name, model_type):
+    """Set the default model for the workspace.
+
+    Example:
+        dify-ops model set-default openai gpt-4o --model-type llm
+    """
+    try:
+        with DifyClient(api_url, api_key) as client:
+            service = ModelService(client)
+
+            # Import DefaultModelConfig
+            from .config.schema import DefaultModelConfig
+
+            config = DefaultModelConfig(
+                provider=provider,
+                model=model_name,
+                model_type=model_type,
+            )
+
+            console.print(f"[blue]Setting default model:[/blue] {provider}/{model_name} ({model_type})")
+            service.set_default_model(config)
+
+            console.print(f"[green]✓[/green] Default model set successfully")
+            console.print(f"  Provider: {provider}")
+            console.print(f"  Model: {model_name}")
+            console.print(f"  Type: {model_type}")
+
+    except DifyClientError as e:
+        console.print(f"[red]✗[/red] Failed to set default model: {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Unexpected error: {e}")
+        sys.exit(1)
+
+
+@model.command("list-providers")
+@click.option("--api-url", envvar="DIFY_API_URL", required=True, help="Dify API URL")
+@click.option("--api-key", envvar="DIFY_API_KEY", required=True, help="Dify API key")
+def list_providers(api_url, api_key):
+    """List all model providers."""
+    try:
+        with DifyClient(api_url, api_key) as client:
+            service = ModelService(client)
+
+            console.print("[blue]Fetching model providers...[/blue]")
+            providers = service.list_providers()
+
+            if not providers:
+                console.print("[yellow]No providers found[/yellow]")
+                return
+
+            # Create a table
+            table = Table(title="Model Providers")
+            table.add_column("Provider", style="cyan")
+            table.add_column("Status", style="green")
+            table.add_column("Models Count", style="yellow")
+
+            for provider in providers:
+                provider_name = provider.get("provider", "")
+                status = "Configured" if provider.get("is_valid") else "Not Configured"
+                models_count = str(len(provider.get("models", [])))
+
+                table.add_row(provider_name, status, models_count)
+
+            console.print(table)
+
+    except DifyClientError as e:
+        console.print(f"[red]✗[/red] Failed to list providers: {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Unexpected error: {e}")
+        sys.exit(1)
+
+
+@model.command("list-models")
+@click.option("--api-url", envvar="DIFY_API_URL", required=True, help="Dify API URL")
+@click.option("--api-key", envvar="DIFY_API_KEY", required=True, help="Dify API key")
+@click.argument("provider")
+def list_models(api_url, api_key, provider):
+    """List available models for a provider.
+
+    Example:
+        dify-ops model list-models openai
+    """
+    try:
+        with DifyClient(api_url, api_key) as client:
+            service = ModelService(client)
+
+            console.print(f"[blue]Fetching models for provider:[/blue] {provider}")
+            models = service.get_provider_models(provider)
+
+            if not models:
+                console.print(f"[yellow]No models found for provider: {provider}[/yellow]")
+                return
+
+            # Create a table
+            table = Table(title=f"Models for {provider}")
+            table.add_column("Model", style="cyan")
+            table.add_column("Type", style="green")
+            table.add_column("Status", style="yellow")
+
+            for model in models:
+                model_name = model.get("model", "")
+                model_type = model.get("model_type", "")
+                status = "Enabled" if model.get("enabled") else "Disabled"
+
+                table.add_row(model_name, model_type, status)
+
+            console.print(table)
+
+    except DifyClientError as e:
+        console.print(f"[red]✗[/red] Failed to list models: {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Unexpected error: {e}")
+        sys.exit(1)
+
+
+@model.command("get-default")
+@click.option("--api-url", envvar="DIFY_API_URL", required=True, help="Dify API URL")
+@click.option("--api-key", envvar="DIFY_API_KEY", required=True, help="Dify API key")
+def get_default_model(api_url, api_key):
+    """Get the current default model."""
+    try:
+        with DifyClient(api_url, api_key) as client:
+            service = ModelService(client)
+
+            console.print("[blue]Fetching default model...[/blue]")
+            default_model = service.get_default_model()
+
+            if not default_model:
+                console.print("[yellow]No default model configured[/yellow]")
+                return
+
+            # Create a table
+            table = Table(title="Default Model")
+            table.add_column("Field", style="cyan")
+            table.add_column("Value", style="green")
+
+            table.add_row("Provider", default_model.get("model_provider", ""))
+            table.add_row("Model", default_model.get("model", ""))
+            table.add_row("Type", default_model.get("model_type", ""))
+
+            console.print(table)
+
+    except DifyClientError as e:
+        console.print(f"[red]✗[/red] Failed to get default model: {e}")
         sys.exit(1)
     except Exception as e:
         console.print(f"[red]✗[/red] Unexpected error: {e}")

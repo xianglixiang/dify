@@ -215,12 +215,43 @@ dify-ops plugin list
 dify-ops plugin task-status <task-id>
 ```
 
+### Model Commands
+
+```bash
+# Add a model provider with credentials
+dify-ops model add-provider openai \
+  -c openai_api_key=sk-your-key-here
+
+dify-ops model add-provider anthropic \
+  -c anthropic_api_key=sk-ant-your-key-here
+
+# Enable a model for a provider
+dify-ops model enable openai gpt-4o --model-type llm
+dify-ops model enable openai text-embedding-3-large --model-type text-embedding
+
+# Disable a model
+dify-ops model disable openai gpt-3.5-turbo --model-type llm
+
+# Set default model for the workspace
+dify-ops model set-default openai gpt-4o --model-type llm
+
+# List all model providers
+dify-ops model list-providers
+
+# List models for a specific provider
+dify-ops model list-models openai
+
+# Get current default model
+dify-ops model get-default
+```
+
 ## Examples
 
 See the `examples/` directory for configuration examples:
 
 - [`basic-setup.yaml`](./examples/basic-setup.yaml): Minimal configuration for creating a tenant
 - [`plugin-setup.yaml`](./examples/plugin-setup.yaml): Plugin upload and installation example
+- [`model-setup.yaml`](./examples/model-setup.yaml): Model provider and model configuration example
 - [`complete-setup.yaml`](./examples/complete-setup.yaml): Full configuration with models and plugins
 
 ## Development
@@ -319,10 +350,11 @@ jobs:
 - ✅ Task status monitoring
 - ✅ Progress display
 
-### Phase 3 (Planned)
-- [ ] Model provider configuration
-- [ ] Model enablement
-- [ ] Default model setting
+### Phase 3 (Completed)
+- ✅ Model provider configuration
+- ✅ Model enablement/disablement
+- ✅ Default model setting
+- ✅ Provider and model listing
 
 ### Phase 4 (Planned)
 - [ ] Complete `apply` command

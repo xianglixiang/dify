@@ -1,0 +1,105 @@
+# Model-Focused Dify Setup Configuration
+# This example demonstrates model provider and model configuration
+
+version: "1.0"
+
+metadata:
+  name: "Model Configuration Setup"
+  description: "Example configuration for setting up model providers and models"
+
+# API connection settings
+connection:
+  api_url: "http://localhost:5001"
+  api_key: "${DIFY_API_KEY}"
+  timeout: 300
+  verify_ssl: true
+
+# Tenant configuration with model providers
+tenants:
+  - name: "Model Demo Workspace"
+    email: "model-demo@example.com"
+    language: "en-US"
+
+    # Model providers configuration
+    model_providers:
+      # OpenAI provider with multiple models
+      - provider: "openai"
+        credentials:
+          openai_api_key: "${OPENAI_API_KEY}"
+        models:
+          # LLM models
+          - model: "gpt-4o"
+            model_type: "llm"
+            enabled: true
+          - model: "gpt-4o-mini"
+            model_type: "llm"
+            enabled: true
+          - model: "gpt-4-turbo"
+            model_type: "llm"
+            enabled: true
+          - model: "gpt-3.5-turbo"
+            model_type: "llm"
+            enabled: false  # Available but not enabled by default
+
+          # Embedding models
+          - model: "text-embedding-3-large"
+            model_type: "text-embedding"
+            enabled: true
+          - model: "text-embedding-3-small"
+            model_type: "text-embedding"
+            enabled: true
+          - model: "text-embedding-ada-002"
+            model_type: "text-embedding"
+            enabled: false
+
+      # Anthropic provider
+      - provider: "anthropic"
+        credentials:
+          anthropic_api_key: "${ANTHROPIC_API_KEY}"
+        models:
+          - model: "claude-3-5-sonnet-20241022"
+            model_type: "llm"
+            enabled: true
+          - model: "claude-3-5-haiku-20241022"
+            model_type: "llm"
+            enabled: true
+          - model: "claude-3-opus-20240229"
+            model_type: "llm"
+            enabled: false
+
+      # Azure OpenAI provider (optional)
+      # - provider: "azure_openai"
+      #   credentials:
+      #     azure_api_key: "${AZURE_OPENAI_API_KEY}"
+      #     azure_endpoint: "${AZURE_OPENAI_ENDPOINT}"
+      #     api_version: "2024-02-01"
+      #   models:
+      #     - model: "gpt-4"
+      #       model_type: "llm"
+      #       enabled: true
+
+      # Cohere provider (optional)
+      # - provider: "cohere"
+      #   credentials:
+      #     cohere_api_key: "${COHERE_API_KEY}"
+      #   models:
+      #     - model: "command-r-plus"
+      #       model_type: "llm"
+      #       enabled: true
+      #     - model: "embed-multilingual-v3.0"
+      #       model_type: "text-embedding"
+      #       enabled: true
+
+    # Set default model for the workspace
+    default_model:
+      provider: "openai"
+      model: "gpt-4o"
+      model_type: "llm"
+
+# Execution options
+options:
+  idempotent: true
+  fail_fast: false
+  max_retries: 3
+  retry_delay: 5
+  dry_run: false
