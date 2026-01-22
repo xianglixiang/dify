@@ -1,0 +1,107 @@
+# Offline/Air-Gapped Environment Setup
+# This configuration is designed for completely offline enterprise environments
+#
+# Key Features:
+# - SSL verification can be disabled for self-signed certificates
+# - No external network calls (only local Dify API)
+# - Environment variables for sensitive credentials
+#
+# Usage:
+#   1. Configure internal API endpoint and credentials:
+#      export DIFY_API_KEY=your-internal-api-key
+#      export OPENAI_API_KEY=sk-your-key  # If using internal OpenAI-compatible API
+#
+#   2. Preview changes (dry-run):
+#      dify-ops apply offline-setup.yaml --dry-run
+#
+#   3. Apply configuration:
+#      dify-ops apply offline-setup.yaml
+#
+# Docker Usage:
+#   docker run -v $(pwd):/config --env-file .env \
+#     dify-ops-cli:v0.1.0 apply /config/offline-setup.yaml
+
+version: "1.0"
+
+metadata:
+  name: "Offline Enterprise Setup"
+  description: "Configuration for air-gapped/offline enterprise environment"
+
+# Connection to internal Dify API
+connection:
+  # Internal Dify API endpoint (adjust to your environment)
+  api_url: "https://dify.internal.company.com"
+  api_key: "${DIFY_API_KEY}"
+
+  # Disable SSL verification if using self-signed certificates
+  # For production with proper CA, set to true and configure SSL_CERT_FILE
+  verify_ssl: false
+
+  # Extended timeout for slower internal networks
+  timeout: 300
+
+# Tenant/Workspace configuration
+tenants:
+  - name: "Production Workspace"
+    email: "admin@company.com"
+    language: "en-US"
+
+    # Model providers configuration
+    # Note: API keys should point to internal/on-premise endpoints if available
+    model_providers:
+      # OpenAI or OpenAI-compatible internal service
+      - provider: "openai"
+        credentials:
+          openai_api_key: "${OPENAI_API_KEY}"
+        models:
+          - model: "gpt-4o"
+            model_type: "llm"
+            enabled: true
+          - model: "gpt-4o-mini"
+            model_type: "llm"
+            enabled: true
+          - model: "text-embedding-3-large"
+            model_type: "text-embedding"
+            enabled: true
+
+      # Anthropic or internal Claude-compatible service
+      # Uncomment if you have internal Anthropic API
+      # - provider: "anthropic"
+      #   credentials:
+      #     anthropic_api_key: "${ANTHROPIC_API_KEY}"
+      #   models:
+      #     - model: "claude-3-5-sonnet-20241022"
+      #       model_type: "llm"
+      #       enabled: true
+
+    # Plugins installed from local files
+    # Store .difypkg files in a local directory accessible from offline environment
+    plugins:
+      - source: "local"
+        path: "./plugins/custom-tool.difypkg"
+        install: true
+      # Add more plugins as needed
+      # - source: "local"
+      #   path: "./plugins/data-connector.difypkg"
+      #   install: true
+
+    # Default model for the workspace
+    default_model:
+      provider: "openai"
+      model: "gpt-4o"
+      model_type: "llm"
+
+# Execution options
+options:
+  # Idempotent: safe to run multiple times
+  idempotent: true
+
+  # Continue on errors (set to true to stop on first error)
+  fail_fast: false
+
+  # Retry configuration for unreliable networks
+  max_retries: 3
+  retry_delay: 5
+
+  # Dry run (preview without applying)
+  dry_run: false

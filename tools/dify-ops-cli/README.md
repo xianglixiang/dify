@@ -13,7 +13,9 @@ A command-line tool for automating Dify platform operations, including tenant ma
 
 ## Installation
 
-### Using uv (Recommended)
+### Standard Installation (Online Environment)
+
+#### Using uv (Recommended)
 
 ```bash
 # From the project directory
@@ -26,12 +28,47 @@ uv pip install -e .
 uv pip install git+https://github.com/your-org/dify.git#subdirectory=tools/dify-ops-cli
 ```
 
-### Using pip
+#### Using pip
 
 ```bash
 cd tools/dify-ops-cli
 pip install -e .
 ```
+
+### Offline Installation (Air-Gapped Environments)
+
+For completely offline or air-gapped enterprise environments, see the [Offline Installation Guide](./docs/OFFLINE_INSTALLATION.md) for detailed instructions.
+
+**Quick Start:**
+
+#### Option 1: Docker Offline Image (Recommended)
+
+```bash
+# Online environment: Build and export image
+./scripts/build-docker-offline.sh
+
+# Transfer dist/dify-ops-cli-v0.1.0.tar.gz to offline environment
+
+# Offline environment: Load and run
+docker load -i dify-ops-cli-v0.1.0.tar.gz
+docker run -v $(pwd):/config dify-ops-cli:v0.1.0 apply /config/config.yaml
+```
+
+#### Option 2: Offline Wheel Package
+
+```bash
+# Online environment: Build offline package
+./scripts/build-offline-package.sh
+
+# Transfer dist/dify-ops-cli-offline-v0.1.0.tar.gz to offline environment
+
+# Offline environment: Extract and install
+tar -xzf dify-ops-cli-offline-v0.1.0.tar.gz
+cd wheels
+./install-offline.sh
+```
+
+See the complete [Offline Installation Guide](./docs/OFFLINE_INSTALLATION.md) for configuration examples, troubleshooting, and best practices.
 
 ## Quick Start
 
@@ -292,6 +329,7 @@ See the `examples/` directory for configuration examples:
 - [`plugin-setup.yaml`](./examples/plugin-setup.yaml): Plugin upload and installation example
 - [`model-setup.yaml`](./examples/model-setup.yaml): Model provider and model configuration example
 - [`complete-setup.yaml`](./examples/complete-setup.yaml): Full configuration with models and plugins
+- [`offline-setup.yaml`](./examples/offline-setup.yaml): Configuration for offline/air-gapped environments
 
 ## Development
 
