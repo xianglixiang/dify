@@ -11,7 +11,9 @@ from . import __version__
 from .client.base import DifyClient
 from .client.exceptions import DifyClientError
 from .config.loader import ConfigLoader
+from .services.plugin_service import PluginService
 from .services.tenant_service import TenantService
+from .utils.progress import TaskProgressTracker
 
 console = Console()
 
@@ -147,6 +149,226 @@ def list(api_url, api_key):
 
     except DifyClientError as e:
         console.print(f"[red]✗[/red] Failed to list tenants: {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Unexpected error: {e}")
+        sys.exit(1)
+
+
+# Plugin commands
+@cli.group()
+def plugin():
+    """Plugin management."""
+    pass
+
+
+@plugin.command()
+@click.option("--api-url", envvar="DIFY_API_URL", required=True, help="Dify API URL")
+@click.option("--api-key", envvar="DIFY_API_KEY", required=True, help="Dify API key")
+@click.argument("plugin_file", type=click.Path(exists=True))
+@click.option("--no-install", is_flag=True, help="Upload only, do not install")
+@click.option("--no-wait", is_flag=True, help="Do not wait for installation to complete")
+def upload(api_url, api_key, plugin_file, no_install, no_wait):
+    """Upload a plugin package file."""
+    try:
+        with DifyClient(api_url, api_key) as client:
+            service = PluginService(client)
+
+            console.print(f"[blue]Uploading plugin:[/blue] {plugin_file}")
+            plugin_id = service.upload_plugin(plugin_file)
+
+            console.print(f"[green]✓[/green] Plugin uploaded successfully")
+            console.print(f"  Plugin ID: {plugin_id}")
+
+            if not no_install:
+                console.print(f"\n[blue]Installing plugin:[/blue] {plugin_id}")
+                task_id = service.install_plugin(plugin_id)
+                console.print(f"  Task ID: {task_id}")
+
+                if not no_wait:
+                    with TaskProgressTracker() as tracker:
+                        task = tracker.add_task(f"Installing {plugin_id}...")
+
+                        # Wait for completion with progress updates
+                        final_status = service.wait_for_task(task_id)
+
+                        tracker.update(task, advance=100, description=f"Installed {plugin_id}")
+
+                    console.print(f"[green]✓[/green] Plugin installed successfully")
+                else:
+                    console.print(f"[yellow]Installation started in background[/yellow]")
+                    console.print(f"  Check status with: dify-ops plugin task-status {task_id}")
+
+    except DifyClientError as e:
+        console.print(f"[red]✗[/red] Failed to upload plugin: {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Unexpected error: {e}")
+        sys.exit(1)
+
+
+@plugin.command()
+@click.option("--api-url", envvar="DIFY_API_URL", required=True, help="Dify API URL")
+@click.option("--api-key", envvar="DIFY_API_KEY", required=True, help="Dify API key")
+@click.argument("plugin_id")
+@click.option("--no-wait", is_flag=True, help="Do not wait for installation to complete")
+def install(api_url, api_key, plugin_id, no_wait):
+    """Install a plugin by its unique identifier."""
+    try:
+        with DifyClient(api_url, api_key) as client:
+            service = PluginService(client)
+
+            console.print(f"[blue]Installing plugin:[/blue] {plugin_id}")
+            task_id = service.install_plugin(plugin_id)
+            console.print(f"  Task ID: {task_id}")
+
+            if not no_wait:
+                with TaskProgressTracker() as tracker:
+                    task = tracker.add_task(f"Installing {plugin_id}...")
+                    service.wait_for_task(task_id)
+                    tracker.update(task, advance=100, description=f"Installed {plugin_id}")
+
+                console.print(f"[green]✓[/green] Plugin installed successfully")
+            else:
+                console.print(f"[yellow]Installation started in background[/yellow]")
+                console.print(f"  Check status with: dify-ops plugin task-status {task_id}")
+
+    except DifyClientError as e:
+        console.print(f"[red]✗[/red] Failed to install plugin: {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Unexpected error: {e}")
+        sys.exit(1)
+
+
+@plugin.command("batch-install")
+@click.option("--api-url", envvar="DIFY_API_URL", required=True, help="Dify API URL")
+@click.option("--api-key", envvar="DIFY_API_KEY", required=True, help="Dify API key")
+@click.argument("plugin_files", nargs=-1, type=click.Path(exists=True), required=True)
+@click.option("--no-wait", is_flag=True, help="Do not wait for installation to complete")
+def batch_install(api_url, api_key, plugin_files, no_wait):
+    """Upload and install multiple plugin files in batch."""
+    try:
+        with DifyClient(api_url, api_key) as client:
+            service = PluginService(client)
+            plugin_ids = []
+
+            # Upload all plugins first
+            console.print(f"[blue]Uploading {len(plugin_files)} plugins...[/blue]")
+
+            with TaskProgressTracker() as tracker:
+                upload_task = tracker.add_task("Uploading plugins...", total=len(plugin_files))
+
+                for plugin_file in plugin_files:
+                    tracker.update(upload_task, description=f"Uploading {plugin_file}...")
+                    plugin_id = service.upload_plugin(plugin_file)
+                    plugin_ids.append(plugin_id)
+                    tracker.update(upload_task, advance=100 / len(plugin_files))
+
+                tracker.complete(upload_task, f"Uploaded {len(plugin_ids)} plugins")
+
+            console.print(f"[green]✓[/green] All plugins uploaded successfully")
+            console.print(f"  Plugin IDs: {', '.join(plugin_ids)}")
+
+            # Batch install all plugins
+            console.print(f"\n[blue]Installing {len(plugin_ids)} plugins in batch...[/blue]")
+            task_id = service.install_plugins_batch(plugin_ids)
+            console.print(f"  Task ID: {task_id}")
+
+            if not no_wait:
+                with TaskProgressTracker() as tracker:
+                    install_task = tracker.add_task(f"Installing {len(plugin_ids)} plugins...")
+                    service.wait_for_task(task_id, timeout=600)  # Longer timeout for batch
+                    tracker.update(install_task, advance=100, description=f"Installed {len(plugin_ids)} plugins")
+
+                console.print(f"[green]✓[/green] All plugins installed successfully")
+            else:
+                console.print(f"[yellow]Installation started in background[/yellow]")
+                console.print(f"  Check status with: dify-ops plugin task-status {task_id}")
+
+    except DifyClientError as e:
+        console.print(f"[red]✗[/red] Failed to batch install plugins: {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Unexpected error: {e}")
+        sys.exit(1)
+
+
+@plugin.command("task-status")
+@click.option("--api-url", envvar="DIFY_API_URL", required=True, help="Dify API URL")
+@click.option("--api-key", envvar="DIFY_API_KEY", required=True, help="Dify API key")
+@click.argument("task_id")
+def task_status(api_url, api_key, task_id):
+    """Check the status of a plugin installation task."""
+    try:
+        with DifyClient(api_url, api_key) as client:
+            service = PluginService(client)
+
+            console.print(f"[blue]Checking task status:[/blue] {task_id}")
+            status = service.get_task_status(task_id)
+
+            # Create a table for status
+            table = Table(title=f"Task {task_id}")
+            table.add_column("Field", style="cyan")
+            table.add_column("Value", style="green")
+
+            table.add_row("Status", status.get("status", "unknown"))
+            table.add_row("Created", status.get("created_at", ""))
+            table.add_row("Updated", status.get("updated_at", ""))
+
+            if status.get("error"):
+                table.add_row("Error", status.get("error"))
+
+            console.print(table)
+
+    except DifyClientError as e:
+        console.print(f"[red]✗[/red] Failed to get task status: {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Unexpected error: {e}")
+        sys.exit(1)
+
+
+@plugin.command()
+@click.option("--api-url", envvar="DIFY_API_URL", required=True, help="Dify API URL")
+@click.option("--api-key", envvar="DIFY_API_KEY", required=True, help="Dify API key")
+@click.option("--page", default=1, help="Page number")
+@click.option("--page-size", default=20, help="Items per page")
+def list(api_url, api_key, page, page_size):
+    """List installed plugins."""
+    try:
+        with DifyClient(api_url, api_key) as client:
+            service = PluginService(client)
+
+            console.print("[blue]Fetching installed plugins...[/blue]")
+            data = service.list_plugins(page=page, page_size=page_size)
+
+            plugins = data.get("data", [])
+            total = data.get("total", 0)
+
+            if not plugins:
+                console.print("[yellow]No plugins found[/yellow]")
+                return
+
+            # Create a table
+            table = Table(title=f"Installed Plugins (Page {page}, Total: {total})")
+            table.add_column("Plugin ID", style="cyan", no_wrap=True)
+            table.add_column("Name", style="green")
+            table.add_column("Version", style="yellow")
+            table.add_column("Status", style="blue")
+
+            for plugin in plugins:
+                table.add_row(
+                    plugin.get("plugin_unique_identifier", "")[:40],  # Truncate long IDs
+                    plugin.get("name", ""),
+                    plugin.get("version", ""),
+                    plugin.get("status", ""),
+                )
+
+            console.print(table)
+
+    except DifyClientError as e:
+        console.print(f"[red]✗[/red] Failed to list plugins: {e}")
         sys.exit(1)
     except Exception as e:
         console.print(f"[red]✗[/red] Unexpected error: {e}")

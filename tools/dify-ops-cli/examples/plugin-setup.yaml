@@ -1,0 +1,51 @@
+# Plugin-Focused Dify Setup Configuration
+# This example demonstrates plugin upload and installation
+
+version: "1.0"
+
+metadata:
+  name: "Plugin Setup"
+  description: "Example configuration for installing plugins"
+
+# API connection settings
+connection:
+  api_url: "http://localhost:5001"
+  api_key: "${DIFY_API_KEY}"
+  timeout: 300
+  verify_ssl: true
+
+# Tenant configuration with plugins
+tenants:
+  - name: "Plugin Demo Workspace"
+    email: "plugin-demo@example.com"
+    language: "en-US"
+
+    # Plugins to install
+    plugins:
+      # Example 1: Upload and install a custom tool plugin
+      - source: "local"
+        path: "./plugins/custom-data-tool.difypkg"
+        install: true
+
+      # Example 2: Upload and install a connector plugin
+      - source: "local"
+        path: "./plugins/api-connector.difypkg"
+        install: true
+
+      # Example 3: Upload and install an analytics plugin
+      - source: "local"
+        path: "./plugins/analytics-helper.difypkg"
+        install: true
+
+      # Example 4: Upload only (don't install yet)
+      - source: "local"
+        path: "./plugins/experimental-feature.difypkg"
+        install: false
+
+# Execution options
+options:
+  idempotent: true
+  fail_fast: false
+  max_retries: 3
+  retry_delay: 5
+  dry_run: false

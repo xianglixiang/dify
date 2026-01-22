@@ -187,11 +187,40 @@ dify-ops tenant create --email admin@example.com --name "My Workspace"
 dify-ops tenant list
 ```
 
+### Plugin Commands
+
+```bash
+# Upload a plugin package
+dify-ops plugin upload path/to/plugin.difypkg
+
+# Upload and install a plugin
+dify-ops plugin upload path/to/plugin.difypkg --no-wait
+
+# Upload without installing
+dify-ops plugin upload path/to/plugin.difypkg --no-install
+
+# Install a plugin by ID
+dify-ops plugin install <plugin-id>
+
+# Batch upload and install multiple plugins
+dify-ops plugin batch-install \
+  plugin1.difypkg \
+  plugin2.difypkg \
+  plugin3.difypkg
+
+# List installed plugins
+dify-ops plugin list
+
+# Check plugin installation task status
+dify-ops plugin task-status <task-id>
+```
+
 ## Examples
 
 See the `examples/` directory for configuration examples:
 
 - [`basic-setup.yaml`](./examples/basic-setup.yaml): Minimal configuration for creating a tenant
+- [`plugin-setup.yaml`](./examples/plugin-setup.yaml): Plugin upload and installation example
 - [`complete-setup.yaml`](./examples/complete-setup.yaml): Full configuration with models and plugins
 
 ## Development
@@ -279,15 +308,16 @@ jobs:
 
 ## Roadmap
 
-### Phase 1 (Current)
+### Phase 1 (Completed)
 - ✅ Basic tenant management
 - ✅ Configuration validation
 - ✅ CLI commands
 
-### Phase 2 (Planned)
-- [ ] Plugin upload and installation
-- [ ] Batch plugin operations
-- [ ] Task status monitoring
+### Phase 2 (Completed)
+- ✅ Plugin upload and installation
+- ✅ Batch plugin operations
+- ✅ Task status monitoring
+- ✅ Progress display
 
 ### Phase 3 (Planned)
 - [ ] Model provider configuration
