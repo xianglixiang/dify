@@ -77,6 +77,13 @@ dify-ops config validate config.yaml
 # View parsed configuration
 dify-ops config show config.yaml
 
+# Preview changes (dry-run) before applying
+dify-ops apply config.yaml --dry-run
+
+# Apply complete configuration from YAML file
+dify-ops apply config.yaml
+
+# Or use individual commands:
 # Create a tenant
 dify-ops tenant create --email admin@example.com --name "My Workspace"
 
@@ -150,6 +157,38 @@ tenants:
 ```
 
 ## CLI Commands
+
+### Apply Command (Recommended)
+
+The `apply` command is the main way to configure Dify using YAML files. It orchestrates all operations:
+
+```bash
+# Preview changes without applying (dry-run)
+dify-ops apply config.yaml --dry-run
+
+# Apply complete configuration
+dify-ops apply config.yaml
+
+# Apply with fail-fast mode (stop on first error)
+dify-ops apply config.yaml --fail-fast
+
+# Verbose output for debugging
+dify-ops -v apply config.yaml
+```
+
+**What the apply command does:**
+1. Creates tenants/workspaces (with idempotent support)
+2. Configures model providers and credentials
+3. Enables/disables models
+4. Uploads and installs plugins
+5. Sets default models
+
+**Features:**
+- **Dry-run mode**: Preview changes before applying
+- **Idempotent**: Safe to run multiple times
+- **Fail-fast option**: Stop on first error or continue
+- **Progress tracking**: Real-time status updates
+- **Error handling**: Detailed error messages and retries
 
 ### Configuration Commands
 
@@ -356,10 +395,13 @@ jobs:
 - ✅ Default model setting
 - ✅ Provider and model listing
 
-### Phase 4 (Planned)
-- [ ] Complete `apply` command
-- [ ] Orchestrated configuration
-- [ ] Dry-run mode
+### Phase 4 (Completed)
+- ✅ Complete `apply` command
+- ✅ Orchestrated configuration
+- ✅ Dry-run mode
+- ✅ Idempotent execution
+- ✅ Error handling and retries
+- ✅ Progress tracking and summary
 
 ### Phase 5 (Future)
 - [ ] Configuration export

@@ -1,5 +1,20 @@
 # Complete Dify Setup Configuration
 # This example shows a full configuration with models, plugins, and multiple tenants
+#
+# Usage:
+#   1. Set environment variables (or use .env file):
+#      export DIFY_API_KEY=your-api-key
+#      export OPENAI_API_KEY=sk-your-openai-key
+#      export ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
+#
+#   2. Preview changes (dry-run):
+#      dify-ops apply complete-setup.yaml --dry-run
+#
+#   3. Apply configuration:
+#      dify-ops apply complete-setup.yaml
+#
+#   4. Apply with fail-fast mode:
+#      dify-ops apply complete-setup.yaml --fail-fast
 
 version: "1.0"
 

@@ -12,6 +12,7 @@ from .client.base import DifyClient
 from .client.exceptions import DifyClientError
 from .config.loader import ConfigLoader
 from .services.model_service import ModelService
+from .services.orchestrator import ConfigurationOrchestrator
 from .services.plugin_service import PluginService
 from .services.tenant_service import TenantService
 from .utils.progress import TaskProgressTracker
@@ -37,6 +38,76 @@ def cli(ctx, verbose):
     setup_logging(verbose)
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
+
+
+# Apply command
+@cli.command()
+@click.argument("config_file", type=click.Path(exists=True))
+@click.option("--dry-run", is_flag=True, help="Preview changes without applying them")
+@click.option("--fail-fast", is_flag=True, help="Stop on first error")
+@click.pass_context
+def apply(ctx, config_file, dry_run, fail_fast):
+    """Apply configuration from a YAML file.
+
+    This command orchestrates the complete setup of Dify tenants, including:
+    - Creating tenants/workspaces
+    - Configuring model providers
+    - Installing plugins
+    - Setting default models
+
+    Example:
+        dify-ops apply config.yaml
+        dify-ops apply config.yaml --dry-run
+        dify-ops apply config.yaml --fail-fast
+    """
+    verbose = ctx.obj.get("verbose", False)
+
+    try:
+        # Load configuration
+        console.print(f"[blue]Loading configuration:[/blue] {config_file}")
+        config = ConfigLoader.load(config_file)
+
+        # Override options with CLI flags if provided
+        if dry_run:
+            config.options.dry_run = True
+        if fail_fast:
+            config.options.fail_fast = True
+
+        console.print(f"[green]✓[/green] Configuration loaded successfully")
+        console.print(f"  Tenants to configure: {len(config.tenants)}")
+        console.print(f"  Idempotent mode: {config.options.idempotent}")
+        console.print(f"  Dry run: {config.options.dry_run}")
+        console.print(f"  Fail fast: {config.options.fail_fast}")
+
+        # Create client and orchestrator
+        with DifyClient(
+            config.connection.api_url,
+            config.connection.api_key,
+            timeout=config.connection.timeout,
+            verify_ssl=config.connection.verify_ssl,
+        ) as client:
+            orchestrator = ConfigurationOrchestrator(client, config)
+
+            # Execute configuration
+            results = orchestrator.execute()
+
+            # Check for errors
+            if results.get("errors"):
+                console.print(f"\n[yellow]⚠ Configuration completed with errors[/yellow]")
+                sys.exit(1)
+
+    except DifyClientError as e:
+        console.print(f"\n[red]✗[/red] Configuration failed: {e}")
+        if verbose:
+            import traceback
+            console.print(traceback.format_exc())
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"\n[red]✗[/red] Unexpected error: {e}")
+        if verbose:
+            import traceback
+            console.print(traceback.format_exc())
+        sys.exit(1)
 
 
 # Config commands
