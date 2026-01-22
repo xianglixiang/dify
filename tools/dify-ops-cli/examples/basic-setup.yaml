@@ -1,0 +1,29 @@
+# Basic Dify Setup Configuration
+# This example shows a minimal configuration for creating a tenant
+
+version: "1.0"
+
+metadata:
+  name: "Basic Setup"
+  description: "Simple tenant creation example"
+
+# API connection settings
+connection:
+  api_url: "http://localhost:5001"
+  api_key: "${DIFY_API_KEY}"
+  timeout: 300
+  verify_ssl: true
+
+# Tenant configuration
+tenants:
+  - name: "Development Workspace"
+    email: "dev@example.com"
+    language: "en-US"
+
+# Execution options
+options:
+  idempotent: true
+  fail_fast: false
+  max_retries: 3
+  retry_delay: 5
+  dry_run: false

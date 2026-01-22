@@ -1,0 +1,95 @@
+# Complete Dify Setup Configuration
+# This example shows a full configuration with models, plugins, and multiple tenants
+
+version: "1.0"
+
+metadata:
+  name: "Production Setup"
+  description: "Complete Dify configuration for production environment"
+
+# API connection settings
+connection:
+  api_url: "http://localhost:5001"
+  api_key: "${DIFY_API_KEY}"
+  timeout: 300
+  verify_ssl: true
+
+# Tenant configuration
+tenants:
+  - name: "Main Production Workspace"
+    email: "admin@example.com"
+    language: "en-US"
+
+    # Model providers configuration
+    model_providers:
+      # OpenAI provider
+      - provider: "openai"
+        credentials:
+          openai_api_key: "${OPENAI_API_KEY}"
+        models:
+          - model: "gpt-4o"
+            model_type: "llm"
+            enabled: true
+          - model: "gpt-4o-mini"
+            model_type: "llm"
+            enabled: true
+          - model: "text-embedding-3-large"
+            model_type: "text-embedding"
+            enabled: true
+          - model: "text-embedding-3-small"
+            model_type: "text-embedding"
+            enabled: true
+
+      # Anthropic provider
+      - provider: "anthropic"
+        credentials:
+          anthropic_api_key: "${ANTHROPIC_API_KEY}"
+        models:
+          - model: "claude-3-5-sonnet-20241022"
+            model_type: "llm"
+            enabled: true
+          - model: "claude-3-5-haiku-20241022"
+            model_type: "llm"
+            enabled: true
+
+    # Plugins to install
+    plugins:
+      - source: "local"
+        path: "./plugins/custom-tool.difypkg"
+        install: true
+      - source: "local"
+        path: "./plugins/data-connector.difypkg"
+        install: true
+
+    # Default model configuration
+    default_model:
+      provider: "openai"
+      model: "gpt-4o"
+      model_type: "llm"
+
+  # Additional tenant for development
+  - name: "Development Workspace"
+    email: "dev@example.com"
+    language: "en-US"
+
+    model_providers:
+      - provider: "openai"
+        credentials:
+          openai_api_key: "${OPENAI_API_KEY}"
+        models:
+          - model: "gpt-4o-mini"
+            model_type: "llm"
+            enabled: true
+
+    default_model:
+      provider: "openai"
+      model: "gpt-4o-mini"
+      model_type: "llm"
+
+# Execution options
+options:
+  idempotent: true
+  fail_fast: false
+  max_retries: 3
+  retry_delay: 5
+  dry_run: false
