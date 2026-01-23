@@ -170,9 +170,13 @@ deactivate
 
 ## Configuration for Offline Environments
 
-### Disabling SSL Verification
+### SSL/TLS Certificate Configuration
 
-If your internal Dify API uses self-signed certificates:
+You have three options for handling SSL certificates in offline environments:
+
+#### Option 1: Disable SSL Verification (Not Recommended for Production)
+
+If your internal Dify API uses self-signed certificates and you're in a development environment:
 
 ```yaml
 # config.yaml
@@ -184,9 +188,49 @@ connection:
   verify_ssl: false  # Disable SSL verification
 ```
 
-### Using Custom CA Certificates
+⚠️ **Warning**: This option is convenient but not secure. Use only in trusted internal networks or development environments.
 
-For enterprise CA certificates, set the environment variable:
+#### Option 2: Custom CA Certificate via Configuration (Recommended)
+
+For enterprise environments with custom Certificate Authorities, specify the CA bundle path in your configuration:
+
+```yaml
+# config.yaml
+version: "1.0"
+
+connection:
+  api_url: "https://dify.internal.company.com"
+  api_key: "${DIFY_API_KEY}"
+  verify_ssl: true  # Can be true or false, ignored when ca_bundle_path is set
+  ca_bundle_path: "/etc/ssl/certs/company-ca-bundle.crt"
+```
+
+**Benefits:**
+- ✅ Maintains SSL/TLS security
+- ✅ Works with enterprise PKI infrastructure
+- ✅ Explicit and auditable configuration
+- ✅ No need for environment variables
+
+**Docker usage with custom CA:**
+
+```bash
+# Mount the CA certificate into the container
+docker run \
+  -v /etc/ssl/certs/company-ca-bundle.crt:/certs/ca-bundle.crt:ro \
+  -v $(pwd):/config \
+  dify-ops-cli:v0.1.0 \
+  apply /config/config.yaml
+```
+
+And in your config.yaml:
+```yaml
+connection:
+  ca_bundle_path: "/certs/ca-bundle.crt"  # Path inside container
+```
+
+#### Option 3: Custom CA Certificate via Environment Variables
+
+Alternatively, you can set system-wide environment variables (works with both direct installation and Docker):
 
 ```bash
 export REQUESTS_CA_BUNDLE=/etc/ssl/certs/company-ca-bundle.crt
@@ -204,6 +248,14 @@ docker run \
   apply /config/config.yaml
 ```
 
+**Comparison:**
+
+| Method | Security | Portability | Auditability | Recommended |
+|--------|----------|-------------|--------------|-------------|
+| `verify_ssl: false` | ⚠️ Low | ✅ High | ❌ Low | Development only |
+| `ca_bundle_path` | ✅ High | ✅ High | ✅ High | **Yes - Production** |
+| Environment variables | ✅ High | ⚠️ Medium | ⚠️ Medium | Alternative |
+
 ## Example: Complete Offline Setup
 
 ### 1. Create Configuration File
@@ -219,7 +271,12 @@ metadata:
 connection:
   api_url: "https://dify.internal.company.com"
   api_key: "${DIFY_API_KEY}"
-  verify_ssl: false  # Using self-signed cert
+
+  # Recommended: Use custom CA certificate
+  ca_bundle_path: "/etc/ssl/certs/company-ca-bundle.crt"
+
+  # Alternative: Disable SSL verification (not recommended for production)
+  # verify_ssl: false
 
 tenants:
   - name: "Production Workspace"

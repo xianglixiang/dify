@@ -12,6 +12,9 @@ class ConnectionConfig(BaseModel):
     api_key: str = Field(..., description="API key for authentication")
     timeout: int = Field(default=300, description="Request timeout in seconds")
     verify_ssl: bool = Field(default=True, description="Whether to verify SSL certificates")
+    ca_bundle_path: str | None = Field(
+        default=None, description="Path to custom CA certificate bundle file for SSL verification"
+    )
 
 
 class ModelConfig(BaseModel):

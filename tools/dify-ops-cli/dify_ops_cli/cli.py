@@ -85,6 +85,7 @@ def apply(ctx, config_file, dry_run, fail_fast):
             config.connection.api_key,
             timeout=config.connection.timeout,
             verify_ssl=config.connection.verify_ssl,
+            ca_bundle_path=config.connection.ca_bundle_path,
         ) as client:
             orchestrator = ConfigurationOrchestrator(client, config)
 

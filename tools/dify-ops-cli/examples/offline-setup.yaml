@@ -33,9 +33,14 @@ connection:
   api_url: "https://dify.internal.company.com"
   api_key: "${DIFY_API_KEY}"
 
-  # Disable SSL verification if using self-signed certificates
-  # For production with proper CA, set to true and configure SSL_CERT_FILE
+  # SSL/TLS Configuration Options:
+  # Option 1: Disable SSL verification (not recommended for production)
   verify_ssl: false
+
+  # Option 2: Use custom CA certificate bundle (recommended for enterprise)
+  # Uncomment and set the path to your organization's CA certificate bundle
+  # ca_bundle_path: "/etc/ssl/certs/company-ca-bundle.crt"
+  # Note: When ca_bundle_path is set, verify_ssl is ignored
 
   # Extended timeout for slower internal networks
   timeout: 300
